@@ -48,7 +48,7 @@ tests/
   test_money.py             базовый (зелёный) набор — эталон стиля тестов
   test_inventory.py         часть 1
   test_reporting.py         часть 1
-  test_checkout.py          часть 2: один красный тест + заготовки под остальные
+  test_checkout.py          часть 2: один красный тест и 19 заготовок под остальные
 scripts/                    setup / check / doctor / reset, TDD-проверка истории
 docs/                       инструкции и шпаргалки
 .github/workflows/          part1-ci.yml и part2-ci.yml
@@ -58,12 +58,14 @@ docs/                       инструкции и шпаргалки
 
 Два независимых workflow, каждый со своими джобами:
 
-* `part1-ci.yml` → `format`, `lint`, `types`, `tests` (тесты на Python 3.12 и 3.13);
+* `part1-ci.yml` → `format`, `lint`, `types`, `tests` (тесты части 1 на Python 3.12
+  и 3.13);
 * `part2-ci.yml` → `tests`, `checkout-coverage` (не ниже 90 % покрытия
   `shop.checkout`), `tdd-history` (проверяет, что тесты написаны раньше кода).
 
-Команды CI и команды скриптов **одина в один**: `./scripts/check.sh` запускает ровно
-то же, что и пайплайн. Это главный навык работы: чинить сборку локально по выводу
+Команды CI и команды скриптов **одина в один**: `./scripts/check.sh` запускает все
+проверки пайплайна, а `./scripts/check-part1.sh` и `./scripts/check-part2.sh` —
+его части. Это главный навык работы: чинить сборку локально по выводу
 инструментов, а не в веб-интерфейсе GitHub.
 
 ## Правила проекта

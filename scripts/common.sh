@@ -88,6 +88,13 @@ gate_format() { run_step "Форматирование (ruff format)" uv run ruf
 gate_lint() { run_step "Линт (ruff check)" uv run ruff check .; }
 gate_types() { run_step "Типы (mypy)" uv run mypy src tests; }
 gate_tests() { run_step "Тесты (pytest)" uv run pytest; }
+
+# Тесты части 1. Smoke-тест части 2 заведомо красный, поэтому в первой части он
+# не проверяется: полный набор всегда гоняет check.sh и джоба part2-ci.
+gate_part1_tests() {
+  run_step "Тесты (pytest, часть 1)" \
+    uv run pytest tests/test_money.py tests/test_inventory.py tests/test_reporting.py
+}
 gate_checkout_tests() {
   run_step "Тесты расчёта заказа + покрытие >= 90%" \
     uv run pytest tests/test_checkout.py \

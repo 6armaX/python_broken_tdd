@@ -32,7 +32,9 @@ select = ["E", "W", "F", "I", "N", "UP", "B", "SIM", "C4", "RET", "C90"]
 ignore = ["E501"]
 
 [tool.ruff.lint.mccabe]
-max-complexity = 7
+# Порог сложности. Валидация заказа в части 2 содержит 10 правил,
+# поэтому функции с большим числом ветвлений стоит разбивать на помощники.
+max-complexity = 9
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["S101"]

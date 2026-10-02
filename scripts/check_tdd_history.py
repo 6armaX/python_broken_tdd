@@ -7,8 +7,9 @@
 1. в `tests/test_checkout.py` не меньше MIN_TESTS тестов, и в каждом есть `assert`;
 2. в тестах нет `skip` и `xfail`;
 3. функции в `src/shop/checkout.py` — не заглушки;
-4. в истории git коммит с первыми тестами раньше коммита с реализацией,
-   а на момент коммита с тестами реализация ещё была заглушкой.
+4. в истории git коммит, где тестов стало достаточно (не меньше MIN_TESTS
+   строк с `assert`), раньше коммита, где заглушка `...` исчезла; и на момент
+   коммита с тестами реализация ещё была заглушкой.
 
 Проверка 4 пропускается с предупреждением, если это не git-репозиторий или
 репозиторий склонирован не полностью (`git clone --depth=1`): на мелких клонах
@@ -26,7 +27,6 @@ TESTS_PATH = Path("tests/test_checkout.py")
 IMPL_PATH = Path("src/shop/checkout.py")
 MIN_TESTS = 10
 FORBIDDEN_MARKERS = ("skip", "xfail")
-STUB_STATEMENTS = (ast.Pass, ast.Expr)
 
 
 def git(*args: str) -> str | None:
@@ -130,21 +130,43 @@ def history_is_available() -> bool:
     return True
 
 
+def count_asserts(source: str) -> int:
+    """Приблизительное число assert в тексте: строки, начинающиеся с `assert`."""
+    return sum(1 for line in source.splitlines() if line.lstrip().startswith("assert "))
+
+
+def first_commit_with_full_tests() -> str | None:
+    """Первый коммит, где тестов достаточно: строк с `assert` не меньше MIN_TESTS."""
+    for sha in commits_for(TESTS_PATH):
+        blob = git("show", f"{sha}:{TESTS_PATH}")
+        if blob is not None and count_asserts(blob) >= MIN_TESTS:
+            return sha
+    return None
+
+
+def first_commit_without_stub() -> str | None:
+    """Первый коммит, где заглушка `...` исчезла из реализации."""
+    for sha in commits_for(IMPL_PATH):
+        blob = git("show", f"{sha}:{IMPL_PATH}")
+        if blob is not None and "..." not in blob:
+            return sha
+    return None
+
+
 def check_history() -> list[str]:
     """Проверка 4: тесты закоммичены раньше реализации."""
     if not history_is_available():
         return []
 
-    test_commits = commits_for(TESTS_PATH)
-    impl_commits = commits_for(IMPL_PATH)
-    if not test_commits:
-        return ["нет ни одного коммита с тестами: закоммитьте тест до кода"]
-    if len(impl_commits) < 2:
+    first_impl = first_commit_without_stub()
+    if first_impl is None:
         return ["реализация не менялась с момента создания заглушки"]
 
+    first_test = first_commit_with_full_tests()
+    if first_test is None:
+        return [f"тестов с assert меньше, чем нужно: {MIN_TESTS}"]
+
     problems: list[str] = []
-    first_test = test_commits[0]
-    first_impl = impl_commits[1]
     if not is_ancestor(first_test, first_impl):
         problems.append("тесты закоммичены не раньше реализации")
 
@@ -152,11 +174,9 @@ def check_history() -> list[str]:
     if stub_at_that_time is None:
         problems.append("не удалось прочитать реализацию на момент коммита с тестами")
     elif "..." in stub_at_that_time:
-        note(f"первый коммит с тестами: {first_test[:8]}, реализация на тот момент — заглушка")
+        note(f"тесты закоммичены раньше реализации: {first_test[:8]} -> {first_impl[:8]}")
     else:
-        problems.append(
-            "на момент коммита с первыми тестами реализация уже была готова — это не TDD"
-        )
+        problems.append("на момент коммита с тестами реализация уже была готова — это не TDD")
     return problems
 
 

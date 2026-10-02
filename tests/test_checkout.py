@@ -23,6 +23,7 @@ def line(sku: str = "SKU-1", qty: str = "1", unit_price_kopecks: str = "10000") 
 
 def test_smoke_single_line_without_delivery() -> None:
     """One line, no promo code, no delivery. Works out to 100.00 rub + 20% VAT."""
+    assert validate_order([line()]) is None
     assert calculate_order_total([line()]) == 12_000
 
 
@@ -48,6 +49,11 @@ def test_non_numeric_quantity_is_rejected() -> None:
 
 def test_zero_quantity_is_rejected() -> None:
     """Spec 3, rule 5: `qty` must be greater than zero."""
+    ...
+
+
+def test_non_numeric_price_is_rejected() -> None:
+    """Spec 3, rule 6: `unit_price_kopecks` must be a whole number."""
     ...
 
 
