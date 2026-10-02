@@ -97,4 +97,4 @@ uv run python --version | sed 's/^/    /'
 printf '\n%sГотово.%s Дальше:\n' "$C_GREEN" "$C_RESET"
 printf '  ./scripts/check.sh   — прогнать все проверки (сейчас будет красным, это нормально)\n'
 printf '  ./scripts/doctor.sh  — диагностика окружения, если что-то не так\n'
-printf '  docs/00-environment.md и docs/part1-red-ci.md — что делать дальше\n'
+printf '  README.md            — о проекте и с чего начать\n'

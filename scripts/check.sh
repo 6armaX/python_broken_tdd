@@ -25,8 +25,7 @@ print_summary "Итог: локальная копия CI"
 
 if ! summary_exit_code; then
   printf '\n%sЧто читать дальше:%s\n' "$C_BOLD" "$C_RESET"
-  printf '  docs/part1-red-ci.md  — часть 1, починка сборки\n'
-  printf '  docs/part2-tdd-agent.md — часть 2, TDD и агент\n'
-  printf '  docs/01-toolchain.md  — как читать вывод ruff, mypy и pytest\n'
+  printf '  README.md            — о проекте и с чего начать\n'
+  printf '  docs/01-toolchain.md — как читать вывод ruff, mypy и pytest\n'
   exit 1
 fi
