@@ -135,6 +135,16 @@ def count_asserts(source: str) -> int:
     return sum(1 for line in source.splitlines() if line.lstrip().startswith("assert "))
 
 
+def is_stub_source(source: str) -> bool:
+    """Похоже на заглушку: есть отдельная строка, где тело — только `...` или `pass`.
+
+    Разбирать код через `ast` здесь нельзя: промежуточный коммит может не
+    парситься, а исключения в этом проекте запрещены. Поэтому ищем отдельную
+    строку, а не подстроку: аннотация `tuple[int, ...]` заглушкой не является.
+    """
+    return any(line.strip() in {"...", "pass"} for line in source.splitlines())
+
+
 def first_commit_with_full_tests() -> str | None:
     """Первый коммит, где тестов достаточно: строк с `assert` не меньше MIN_TESTS."""
     for sha in commits_for(TESTS_PATH):
@@ -145,10 +155,10 @@ def first_commit_with_full_tests() -> str | None:
 
 
 def first_commit_without_stub() -> str | None:
-    """Первый коммит, где заглушка `...` исчезла из реализации."""
+    """Первый коммит, где заглушка исчезла из реализации."""
     for sha in commits_for(IMPL_PATH):
         blob = git("show", f"{sha}:{IMPL_PATH}")
-        if blob is not None and "..." not in blob:
+        if blob is not None and not is_stub_source(blob):
             return sha
     return None
 
@@ -173,7 +183,7 @@ def check_history() -> list[str]:
     stub_at_that_time = git("show", f"{first_test}:{IMPL_PATH}")
     if stub_at_that_time is None:
         problems.append("не удалось прочитать реализацию на момент коммита с тестами")
-    elif "..." in stub_at_that_time:
+    elif is_stub_source(stub_at_that_time):
         note(f"тесты закоммичены раньше реализации: {first_test[:8]} -> {first_impl[:8]}")
     else:
         problems.append("на момент коммита с тестами реализация уже была готова — это не TDD")
