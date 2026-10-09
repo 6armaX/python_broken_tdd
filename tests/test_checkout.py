@@ -29,94 +29,137 @@ def test_smoke_single_line_without_delivery() -> None:
 
 def test_empty_order_is_rejected() -> None:
     """Spec 3, rule 1: an order without lines cannot be processed."""
-    ...
+    assert validate_order([]) is not None
+    assert calculate_order_total([]) is None
 
 
 def test_empty_sku_is_rejected() -> None:
     """Spec 3, rule 2: a blank article code is not allowed."""
-    ...
+    assert validate_order([line(sku="")]) is not None
+    assert validate_order([line(sku="   ")]) is not None
+    assert calculate_order_total([line(sku="")]) is None
 
 
 def test_missing_line_key_is_rejected() -> None:
     """Spec 3, rule 3: every required key must be present."""
-    ...
+    # Build a line missing the 'sku' key completely
+    bad_line = {"qty": "5", "unit_price_kopecks": "1000"}
+    assert validate_order([bad_line]) is not None
+    assert calculate_order_total([bad_line]) is None
 
 
 def test_non_numeric_quantity_is_rejected() -> None:
     """Spec 3, rule 4: `qty` must be a whole number."""
-    ...
+    assert validate_order([line(qty="abc")]) is not None
+    assert validate_order([line(qty="1.5")]) is not None
+    assert calculate_order_total([line(qty="abc")]) is None
 
 
 def test_zero_quantity_is_rejected() -> None:
     """Spec 3, rule 5: `qty` must be greater than zero."""
-    ...
+    assert validate_order([line(qty="0")]) is not None
+    assert calculate_order_total([line(qty="0")]) is None
 
 
 def test_non_numeric_price_is_rejected() -> None:
     """Spec 3, rule 6: `unit_price_kopecks` must be a whole number."""
-    ...
+    assert validate_order([line(unit_price_kopecks="free")]) is not None
+    assert validate_order([line(unit_price_kopecks="99.9")]) is not None
+    assert calculate_order_total([line(unit_price_kopecks="free")]) is None
 
 
 def test_negative_price_is_rejected() -> None:
     """Spec 3, rule 7: a price may not be negative."""
-    ...
+    assert validate_order([line(unit_price_kopecks="-500")]) is not None
+    assert calculate_order_total([line(unit_price_kopecks="-500")]) is None
 
 
 def test_duplicate_sku_is_rejected() -> None:
     """Spec 3, rule 8: the same article may appear only once."""
-    ...
+    order_lines = [line(sku="ITEM-A"), line(sku="ITEM-A")]
+    assert validate_order(order_lines) is not None
+    assert calculate_order_total(order_lines) is None
 
 
 def test_unknown_promo_code_is_rejected() -> None:
     """Spec 3, rule 9: only codes from PROMO_CODES exist."""
-    ...
+    assert validate_order([line()], promo_code="FAKECODE") is not None
+    assert calculate_order_total([line()], promo_code="FAKECODE") is None
 
 
 def test_unsupported_city_is_rejected() -> None:
     """Spec 3, rule 10: only cities from SUPPORTED_CITIES are served."""
-    ...
+    assert validate_order([line()], shipping_city="Atlantis") is not None
+    assert calculate_order_total([line()], shipping_city="Atlantis") is None
 
 
 def test_valid_order_passes_validation() -> None:
     """Spec 3: a good order gets None back instead of a reason."""
-    ...
+    assert validate_order([line(sku="A", qty="1"), line(sku="B", qty="2")]) is None
 
 
 def test_no_discount_below_first_tier() -> None:
     """Spec 4, steps 1-2: 9 units are below every threshold."""
-    ...
+    # Example 1 check: 1 item x 10000 kopecks, pickup -> 12000 total
+    assert calculate_order_total([line(qty="9", unit_price_kopecks="1000")]) == 10_800
 
 
 def test_tier_discount_at_first_threshold() -> None:
     """Spec 4, steps 2-5: 10 units give 5%. Compare with example 2."""
-    ...
+    # Example 2: 10 units x 1990 kopecks -> subtotal 19900. 5% discount is 995.
+    # discounted_subtotal = 18905. No delivery. VAT 20% of 18905 = 3781. Total = 22686.
+    order_lines = [line(qty="10", unit_price_kopecks="1990")]
+    assert calculate_order_total(order_lines) == 22_686
 
 
 def test_tier_discount_at_highest_threshold() -> None:
     """Spec 4, steps 2-5: 50 units give 15%, not 5% + 10%."""
-    ...
+    # Example 3 (excluding promo first): 50 units x 1990 kopecks -> subtotal 99500.
+    # 15% discount is 14925. discounted_subtotal = 84575.
+    # Delivery charged for msk (84575 < 500000) -> +49000 -> base 133575.
+    # VAT 20% of 133575 = 26715. Total = 160290.
+    order_lines = [line(qty="50", unit_price_kopecks="1990")]
+    assert calculate_order_total(order_lines, promo_code="WELCOME10", shipping_city="msk") == 160_290
 
 
 def test_promo_code_beats_tier_discount() -> None:
     """Spec 4, steps 3-4: the bigger percentage wins, the two do not add up."""
-    ...
+    # 10 units give 5% tier. If promo code gives 10%, we should use 10% (the maximum).
+    # Subtotal: 10 * 10000 = 100000. 10% discount = 10000. discounted_subtotal = 90000.
+    # Pickup (no city) -> base = 90000. VAT 20% = 18000. Total = 108000.
+    assert calculate_order_total([line(qty="10", unit_price_kopecks="10000")], promo_code="WELCOME10") == 108_000
 
 
 def test_discount_is_capped_at_thirty_percent() -> None:
     """Spec 4, step 5: VIP35 gives 35%, but the cap is 30%. Compare with example 4."""
-    ...
+    # Example 4: 100 units x 10000 kopecks -> subtotal 1000000.
+    # VIP35 is 35%, capped at 30% -> discount 300000. discounted_subtotal = 700000.
+    # Delivery free (700000 >= 500000) -> base 700000. VAT 20% = 140000. Total = 840000.
+    order_lines = [line(qty="100", unit_price_kopecks="10000")]
+    assert calculate_order_total(order_lines, promo_code="VIP35", shipping_city="spb") == 840_000
 
 
 def test_delivery_is_charged_for_small_order() -> None:
     """Spec 4, steps 7-10: a city adds SHIPPING_KOPEKS and VAT is charged on it."""
-    ...
+    # Example 5 (row 1): 1 x 499999 -> subtotal 499999. Under 500000 threshold.
+    # Delivery added (+49000) -> base 548999. VAT 20% = 109800. Total = 658799.
+    order_lines = [line(qty="1", unit_price_kopecks="499999")]
+    assert calculate_order_total(order_lines, shipping_city="msk") == 658_799
 
 
 def test_free_delivery_uses_discounted_subtotal() -> None:
     """Spec 4, step 7: the threshold is checked against the sum after the discount."""
-    ...
+    # Subtotal is 510000. 10 units trigger 5% discount -> 25500 discount.
+    # discounted_subtotal = 484500. This is < 500000, so delivery MUST be charged.
+    order_lines = [line(qty="10", unit_price_kopecks="51000")]
+    # If delivery is charged: 484500 + 49000 = 533500. VAT 20% = 106700. Total = 640200.
+    assert calculate_order_total(order_lines, shipping_city="msk") == 640_200
 
 
 def test_vat_is_charged_on_the_discounted_sum() -> None:
     """Spec 4, steps 8-10: base = discounted subtotal + delivery."""
-    ...
+    # Simple check confirming VAT calculation applies to the combined base (subtotal + delivery)
+    # Example 5 (row 2): 1 x 500000 -> subtotal 500000. Exactly at threshold -> free delivery.
+    # base = 500000. VAT 20% = 100000. Total = 600000.
+    order_lines = [line(qty="1", unit_price_kopecks="500000")]
+    assert calculate_order_total(order_lines, shipping_city="msk") == 600_000
