@@ -119,7 +119,9 @@ def test_tier_discount_at_highest_threshold() -> None:
     # Delivery charged for msk (84575 < 500000) -> +49000 -> base 133575.
     # VAT 20% of 133575 = 26715. Total = 160290.
     order_lines = [line(qty="50", unit_price_kopecks="1990")]
-    assert calculate_order_total(order_lines, promo_code="WELCOME10", shipping_city="msk") == 160_290
+    assert (
+        calculate_order_total(order_lines, promo_code="WELCOME10", shipping_city="msk") == 160_290
+    )
 
 
 def test_promo_code_beats_tier_discount() -> None:
@@ -127,7 +129,10 @@ def test_promo_code_beats_tier_discount() -> None:
     # 10 units give 5% tier. If promo code gives 10%, we should use 10% (the maximum).
     # Subtotal: 10 * 10000 = 100000. 10% discount = 10000. discounted_subtotal = 90000.
     # Pickup (no city) -> base = 90000. VAT 20% = 18000. Total = 108000.
-    assert calculate_order_total([line(qty="10", unit_price_kopecks="10000")], promo_code="WELCOME10") == 108_000
+    assert (
+        calculate_order_total([line(qty="10", unit_price_kopecks="10000")], promo_code="WELCOME10")
+        == 108_000
+    )
 
 
 def test_discount_is_capped_at_thirty_percent() -> None:
